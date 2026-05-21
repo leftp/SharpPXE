@@ -67,12 +67,23 @@ namespace SharpPXE
                             dataToDecrypt = adjustedData;
                         }
 
+                        string encryptionMode = sccm.GetEncryptionModeFromHeader(fileData);
+                        Console.WriteLine($"[*] Encryption Mode: {encryptionMode ?? "unknown (defaulting to aes128)"}");
+
                         byte[] decryptedVariablesFileData;
 
                         try
                         {
-                            byte[] aesKey = keyForDecryption.Take(16).ToArray();
-                            decryptedVariablesFileData = sccm.Aes128DecryptRaw(dataToDecrypt, aesKey);
+                            if (encryptionMode == "aes256")
+                            {
+                                byte[] aesKey = keyForDecryption.Take(32).ToArray();
+                                decryptedVariablesFileData = sccm.Aes256DecryptRaw(dataToDecrypt, aesKey);
+                            }
+                            else
+                            {
+                                byte[] aesKey = keyForDecryption.Take(16).ToArray();
+                                decryptedVariablesFileData = sccm.Aes128DecryptRaw(dataToDecrypt, aesKey);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -112,7 +123,8 @@ namespace SharpPXE
 
                         byte[] header = sccm.ReadMediaVariableFileHeader(fileData);
                         string mediaFileHash = BitConverter.ToString(header).Replace("-", "").ToLower();
-                        string hashcatHash = $"$sccm$aes128${mediaFileHash}";
+                        string detectedMode = sccm.GetEncryptionModeFromHeader(fileData) ?? "aes128";
+                        string hashcatHash = $"$sccm${detectedMode}${mediaFileHash}";
                         Console.WriteLine($"Got the hash: {hashcatHash}");
                     }
                     else

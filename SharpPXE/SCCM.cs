@@ -309,13 +309,64 @@ namespace SharpPXE
                 aes.Mode = CipherMode.CBC;
                 aes.Padding = PaddingMode.None;
                 aes.Key = key;
-                aes.IV = new byte[16]; 
+                aes.IV = new byte[16];
 
                 using (ICryptoTransform decryptor = aes.CreateDecryptor())
                 {
                     return decryptor.TransformFinalBlock(data, 0, data.Length);
                 }
             }
+        }
+
+        public byte[] Aes256DecryptRaw(byte[] data, byte[] key)
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException(nameof(key), "[!] Decryption key cannot be null.");
+            }
+
+            using (Aes aes = Aes.Create())
+            {
+                aes.KeySize = 256;
+                aes.BlockSize = 128;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.None;
+                aes.Key = key;
+                aes.IV = new byte[16];
+
+                using (ICryptoTransform decryptor = aes.CreateDecryptor())
+                {
+                    return decryptor.TransformFinalBlock(data, 0, data.Length);
+                }
+            }
+        }
+
+        public string GetEncryptionModeFromKey(byte[] encryptedKey)
+        {
+            if (encryptedKey == null || encryptedKey.Length < 15)
+                return null;
+
+            if (encryptedKey[13] == 0x10 && encryptedKey[14] == 0x66)
+                return "aes256";
+            else if (encryptedKey[13] == 0x0e && encryptedKey[14] == 0x66)
+                return "aes128";
+            else if (encryptedKey[13] == 0x03 && encryptedKey[14] == 0x66)
+                return "3des";
+            return null;
+        }
+
+        public string GetEncryptionModeFromHeader(byte[] fileData)
+        {
+            if (fileData == null || fileData.Length < 18)
+                return null;
+
+            if (fileData[16] == 0x10 && fileData[17] == 0x66)
+                return "aes256";
+            else if (fileData[16] == 0x0e && fileData[17] == 0x66)
+                return "aes128";
+            else if (fileData[16] == 0x03 && fileData[17] == 0x66)
+                return "3des";
+            return null;
         }
 
         public byte[] AesDesKeyDerivation(byte[] password)
@@ -371,13 +422,25 @@ namespace SharpPXE
 
             byte[] key = AesDesKeyDerivation(keyData);
 
-            byte[] encryptedDataBlock = new byte[16];
-            Array.Copy(encryptedData, 0, encryptedDataBlock, 0, 16);
+            string encryptionMode = GetEncryptionModeFromKey(encryptedKey);
 
-            byte[] keyBlock = new byte[16];
-            Array.Copy(key, 0, keyBlock, 0, 16);
-
-            byte[] decryptedData = Aes128DecryptRaw(encryptedDataBlock, keyBlock);
+            byte[] decryptedData;
+            if (encryptionMode == "aes256")
+            {
+                byte[] encryptedDataBlock = new byte[32];
+                Array.Copy(encryptedData, 0, encryptedDataBlock, 0, Math.Min(32, encryptedData.Length));
+                byte[] keyBlock = new byte[32];
+                Array.Copy(key, 0, keyBlock, 0, 32);
+                decryptedData = Aes256DecryptRaw(encryptedDataBlock, keyBlock);
+            }
+            else
+            {
+                byte[] encryptedDataBlock = new byte[16];
+                Array.Copy(encryptedData, 0, encryptedDataBlock, 0, 16);
+                byte[] keyBlock = new byte[16];
+                Array.Copy(key, 0, keyBlock, 0, 16);
+                decryptedData = Aes128DecryptRaw(encryptedDataBlock, keyBlock);
+            }
 
             byte[] varFileKey = new byte[10];
             Array.Copy(decryptedData, 0, varFileKey, 0, 10);
