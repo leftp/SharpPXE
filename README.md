@@ -51,15 +51,14 @@ If the media is password-protected (no encryption key provided), you'll see:
 
 ```
 PXE boot media is encrypted with custom password
-Got the hash: $sccm$aes256$<hash>
+Got the hash: $sccm$aes128$<hash>
 ```
 
-The hash prefix reflects the actual encryption algorithm used (`aes128`, `aes256`, or `3des`). You can then use this hash with Hashcat to crack the password.
+You can then use this hash with Hashcat to crack the password.
 
 ## Credits - Original Work from 
 
 * https://github.com/MWR-CyberSec/PXEThief - Christopher Panayi (@Raiona_ZA)
-* https://github.com/blurbdust/PXEThief - AES-256 encrypted .var file support
 * https://github.com/SpecterOps/cred1py - Adam Chester (@_xpn_) 
 * https://github.com/Mayyhem/SharpSCCM - Chris Thompson (@_Mayyhem)
 * https://github.com/SpecterOps/ConfigManBearPig - Chris Thompson (@_Mayyhem)
